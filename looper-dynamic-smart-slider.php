@@ -87,8 +87,12 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                         continue;
                     }
 
-                    $category = sanitize_text_field($row['category']);
+                    $category = $this->sanitize_category_mapping_value($row['category']);
                     $shortcode = wp_kses_post($row['shortcode']);
+
+                    if ($category === '') {
+                        continue;
+                    }
 
                     $sanitized['mappings'][] = array(
                         'category' => $category,
@@ -102,6 +106,26 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
             }
 
             return $sanitized;
+        }
+
+        private function sanitize_category_mapping_value($value)
+        {
+            $value = trim((string) wp_unslash($value));
+            if ($value === '') {
+                return '';
+            }
+
+            // Keep encoded URL/path characters (for Hebrew slugs), but remove HTML.
+            $value = trim(wp_strip_all_tags($value));
+            if ($value === '') {
+                return '';
+            }
+
+            if (preg_match('#^https?://#i', $value)) {
+                return esc_url_raw($value, array('http', 'https'));
+            }
+
+            return $value;
         }
 
         public function render_section_description()
