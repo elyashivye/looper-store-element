@@ -108,6 +108,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
         {
             echo '<p>' . esc_html__('Define which Smart Slider shortcode belongs to each product category.', 'looper-dynamic-slider') . '</p>';
             echo '<p>' . esc_html__('You can use category slug (recommended), term ID, or exact category name.', 'looper-dynamic-slider') . '</p>';
+            echo '<p>' . esc_html__('Tip: You can also paste the category URL (with or without trailing slash); the plugin will extract the slug automatically.', 'looper-dynamic-slider') . '</p>';
             echo '<p><code>[ldss_dynamic_slider]</code> ' . esc_html__('is the fixed shortcode to use inside Elementor.', 'looper-dynamic-slider') . '</p>';
         }
 
@@ -141,7 +142,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
         {
             echo '<div class="ldss-row" style="display:flex;gap:10px;margin-bottom:10px;align-items:center;">';
 
-            echo '<input type="text" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][category]" value="' . esc_attr($category) . '" placeholder="product_cat slug / ID / name" style="min-width:260px;" />';
+            echo '<input type="text" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][category]" value="' . esc_attr($category) . '" placeholder="product_cat slug / ID / name / URL" style="min-width:260px;" />';
 
             echo '<input type="text" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][shortcode]" value="' . esc_attr($shortcode) . '" placeholder="[smartslider3 slider=&quot;2&quot;]" style="min-width:320px;" />';
 
@@ -171,7 +172,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                         row.style.alignItems = 'center';
 
                         row.innerHTML =
-                            '<input type="text" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][category]" placeholder="product_cat slug / ID / name" style="min-width:260px;" />' +
+                            '<input type="text" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][category]" placeholder="product_cat slug / ID / name / URL" style="min-width:260px;" />' +
                             '<input type="text" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][shortcode]" placeholder="[smartslider3 slider=&quot;2&quot;]" style="min-width:320px;" />' +
                             '<button type="button" class="button ldss-remove-row"><?php echo esc_js(__('Remove', 'looper-dynamic-slider')); ?></button>';
 
@@ -252,20 +253,67 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
             $term_id = (string) $term->term_id;
             $term_slug = isset($term->slug) ? (string) $term->slug : '';
             $term_name = isset($term->name) ? (string) $term->name : '';
+            $term_slug_normalized = sanitize_title(wp_unslash($term_slug));
+            $term_name_lc = function_exists('mb_strtolower') ? mb_strtolower($term_name) : strtolower($term_name);
 
             foreach ($mappings as $mapping) {
                 if (empty($mapping['category']) || empty($mapping['shortcode'])) {
                     continue;
                 }
 
-                $candidate = trim((string) $mapping['category']);
+                $raw_candidate = (string) $mapping['category'];
+                $candidates = $this->expand_category_candidates($raw_candidate);
 
-                if ($candidate === $term_id || $candidate === $term_slug || $candidate === $term_name) {
-                    return $mapping['shortcode'];
+                foreach ($candidates as $candidate) {
+                    if ($candidate === $term_id || $candidate === $term_slug || $candidate === $term_name) {
+                        return $mapping['shortcode'];
+                    }
+
+                    if (sanitize_title(wp_unslash($candidate)) === $term_slug_normalized) {
+                        return $mapping['shortcode'];
+                    }
+
+                    $candidate_lc = function_exists('mb_strtolower') ? mb_strtolower($candidate) : strtolower($candidate);
+                    if ($candidate_lc === $term_name_lc) {
+                        return $mapping['shortcode'];
+                    }
                 }
             }
 
             return '';
+        }
+
+        private function expand_category_candidates($raw_candidate)
+        {
+            $raw_candidate = trim((string) $raw_candidate);
+            if ($raw_candidate === '') {
+                return array();
+            }
+
+            $values = array(
+                $raw_candidate,
+                trim($raw_candidate, '/'),
+                rawurldecode($raw_candidate),
+                trim(rawurldecode($raw_candidate), '/'),
+            );
+
+            $path = wp_parse_url($raw_candidate, PHP_URL_PATH);
+            if (is_string($path) && $path !== '') {
+                $trimmed_path = trim($path, '/');
+                if ($trimmed_path !== '') {
+                    $values[] = $trimmed_path;
+                    $values[] = rawurldecode($trimmed_path);
+
+                    $path_parts = explode('/', $trimmed_path);
+                    $last_part = end($path_parts);
+                    if (is_string($last_part) && $last_part !== '') {
+                        $values[] = $last_part;
+                        $values[] = rawurldecode($last_part);
+                    }
+                }
+            }
+
+            return array_values(array_unique(array_filter(array_map('trim', $values))));
         }
     }
 

@@ -6,6 +6,7 @@
 
 - מוסיף עמוד הגדרות תחת WooCommerce > Dynamic Smart Slider.
 - מאפשר למפות קטגוריית מוצרים (לפי slug / ID / שם) לשורטקוד ספציפי של Smart Slider 3.
+- אפשר גם להדביק URL מלא/חלקי של הקטגוריה (עם או בלי `/` בסוף), והתוסף יחלץ אוטומטית את ה־slug.
 - מוסיף שורטקוד קבוע: `[ldss_dynamic_slider]`.
 - כששורטקוד זה נטען בעמוד קטגוריה, התוסף מזהה את הקטגוריה הנוכחית ומריץ את השורטקוד המתאים.
 - אפשר להגדיר גם Default Shortcode למקרה שאין התאמה.
@@ -23,4 +24,4 @@
 - `shoes` → `[smartslider3 slider="7"]`
 - `bags` → `[smartslider3 slider="8"]`
 - `15` → `[smartslider3 slider="9"]` (לפי Term ID)
-
+- `https://example.com/product-category/machines-food-freezers/` → `[smartslider3 slider="10"]`
