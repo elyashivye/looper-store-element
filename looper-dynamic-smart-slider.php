@@ -132,6 +132,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
         {
             echo '<p>' . esc_html__('Define which Smart Slider shortcode belongs to each product category.', 'looper-dynamic-slider') . '</p>';
             echo '<p>' . esc_html__('You can use category slug (recommended), term ID, or exact category name.', 'looper-dynamic-slider') . '</p>';
+            echo '<p>' . esc_html__('Use the category and slider search fields below for faster selection.', 'looper-dynamic-slider') . '</p>';
             echo '<p>' . esc_html__('Tip: You can also paste the category URL (with or without trailing slash); the plugin will extract the slug automatically.', 'looper-dynamic-slider') . '</p>';
             echo '<p><code>[ldss_dynamic_slider]</code> ' . esc_html__('is the fixed shortcode to use inside Elementor.', 'looper-dynamic-slider') . '</p>';
         }
@@ -140,6 +141,8 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
         {
             $value = get_option(self::OPTION_KEY, array());
             $mappings = isset($value['mappings']) && is_array($value['mappings']) ? $value['mappings'] : array();
+            $product_categories = $this->get_product_categories_for_admin();
+            $smart_sliders = $this->get_smart_sliders_for_admin();
 
             if (empty($mappings)) {
                 $mappings = array(
@@ -147,44 +150,96 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                 );
             }
 
+            echo '<datalist id="ldss-category-suggestions">';
+            foreach ($product_categories as $category_option) {
+                echo '<option value="' . esc_attr($category_option['slug']) . '">' . esc_html($category_option['label']) . '</option>';
+            }
+            echo '</datalist>';
+
             echo '<div id="ldss-mapping-rows">';
 
             foreach ($mappings as $index => $mapping) {
                 $category = isset($mapping['category']) ? $mapping['category'] : '';
                 $shortcode = isset($mapping['shortcode']) ? $mapping['shortcode'] : '';
-                $this->render_mapping_row($index, $category, $shortcode);
+                $this->render_mapping_row($index, $category, $shortcode, $smart_sliders);
             }
 
             echo '</div>';
 
             echo '<button type="button" class="button" id="ldss-add-row">' . esc_html__('Add Mapping', 'looper-dynamic-slider') . '</button>';
 
-            $this->render_admin_script();
+            $this->render_admin_script($smart_sliders);
         }
 
-        private function render_mapping_row($index, $category, $shortcode)
+        private function render_mapping_row($index, $category, $shortcode, $smart_sliders)
         {
+            $slider_id_from_shortcode = $this->extract_slider_id_from_shortcode($shortcode);
+
             echo '<div class="ldss-row" style="display:flex;gap:10px;margin-bottom:10px;align-items:center;">';
 
-            echo '<input type="text" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][category]" value="' . esc_attr($category) . '" placeholder="product_cat slug / ID / name / URL" style="min-width:260px;" />';
+            echo '<input type="text" class="ldss-category-input" list="ldss-category-suggestions" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][category]" value="' . esc_attr($category) . '" placeholder="Search category by name / slug / URL" style="min-width:260px;" />';
 
-            echo '<input type="text" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][shortcode]" value="' . esc_attr($shortcode) . '" placeholder="[smartslider3 slider=&quot;2&quot;]" style="min-width:320px;" />';
+            echo '<select class="ldss-slider-select" style="min-width:300px;">';
+            echo '<option value="">' . esc_html__('Select Smart Slider (or keep custom shortcode)', 'looper-dynamic-slider') . '</option>';
+            foreach ($smart_sliders as $slider_option) {
+                $selected = ((string) $slider_option['id'] === (string) $slider_id_from_shortcode) ? 'selected' : '';
+                echo '<option value="' . esc_attr($slider_option['id']) . '" ' . esc_attr($selected) . '>' . esc_html($slider_option['label']) . '</option>';
+            }
+            echo '</select>';
+
+            echo '<input type="text" class="ldss-shortcode-input" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][shortcode]" value="' . esc_attr($shortcode) . '" placeholder="[smartslider3 slider=&quot;2&quot;]" style="min-width:320px;" />';
 
             echo '<button type="button" class="button ldss-remove-row">' . esc_html__('Remove', 'looper-dynamic-slider') . '</button>';
             echo '</div>';
         }
 
-        private function render_admin_script()
+        private function render_admin_script($smart_sliders)
         {
+            $slider_options_html = '<option value="">' . esc_html__('Select Smart Slider (or keep custom shortcode)', 'looper-dynamic-slider') . '</option>';
+            foreach ($smart_sliders as $slider_option) {
+                $slider_options_html .= '<option value="' . esc_attr($slider_option['id']) . '">' . esc_html($slider_option['label']) . '</option>';
+            }
             ?>
             <script>
                 (function () {
                     const container = document.getElementById('ldss-mapping-rows');
                     const addBtn = document.getElementById('ldss-add-row');
+                    const sliderOptionsHtml = <?php echo wp_json_encode($slider_options_html); ?>;
 
                     if (!container || !addBtn) {
                         return;
                     }
+
+                    const updateShortcodeFromSelect = function (row) {
+                        const select = row.querySelector('.ldss-slider-select');
+                        const shortcodeInput = row.querySelector('.ldss-shortcode-input');
+                        if (!select || !shortcodeInput || !select.value) {
+                            return;
+                        }
+
+                        shortcodeInput.value = '[smartslider3 slider="' + select.value + '"]';
+                    };
+
+                    const syncSelectFromShortcode = function (row) {
+                        const select = row.querySelector('.ldss-slider-select');
+                        const shortcodeInput = row.querySelector('.ldss-shortcode-input');
+                        if (!select || !shortcodeInput) {
+                            return;
+                        }
+
+                        const match = shortcodeInput.value.match(/slider\s*=\s*["']?(\d+)["']?/i);
+                        if (!match) {
+                            select.value = '';
+                            return;
+                        }
+
+                        const sliderId = match[1];
+                        const optionExists = Array.prototype.some.call(select.options, function (option) {
+                            return option.value === sliderId;
+                        });
+
+                        select.value = optionExists ? sliderId : '';
+                    };
 
                     addBtn.addEventListener('click', function () {
                         const idx = container.querySelectorAll('.ldss-row').length;
@@ -196,8 +251,9 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                         row.style.alignItems = 'center';
 
                         row.innerHTML =
-                            '<input type="text" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][category]" placeholder="product_cat slug / ID / name / URL" style="min-width:260px;" />' +
-                            '<input type="text" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][shortcode]" placeholder="[smartslider3 slider=&quot;2&quot;]" style="min-width:320px;" />' +
+                            '<input type="text" class="ldss-category-input" list="ldss-category-suggestions" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][category]" placeholder="Search category by name / slug / URL" style="min-width:260px;" />' +
+                            '<select class="ldss-slider-select" style="min-width:300px;">' + sliderOptionsHtml + '</select>' +
+                            '<input type="text" class="ldss-shortcode-input" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][shortcode]" placeholder="[smartslider3 slider=&quot;2&quot;]" style="min-width:320px;" />' +
                             '<button type="button" class="button ldss-remove-row"><?php echo esc_js(__('Remove', 'looper-dynamic-slider')); ?></button>';
 
                         container.appendChild(row);
@@ -213,9 +269,105 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                             row.remove();
                         }
                     });
+
+                    container.addEventListener('change', function (event) {
+                        if (!event.target.classList.contains('ldss-slider-select')) {
+                            return;
+                        }
+
+                        const row = event.target.closest('.ldss-row');
+                        if (row) {
+                            updateShortcodeFromSelect(row);
+                        }
+                    });
+
+                    container.addEventListener('input', function (event) {
+                        if (!event.target.classList.contains('ldss-shortcode-input')) {
+                            return;
+                        }
+
+                        const row = event.target.closest('.ldss-row');
+                        if (row) {
+                            syncSelectFromShortcode(row);
+                        }
+                    });
                 })();
             </script>
             <?php
+        }
+
+        private function extract_slider_id_from_shortcode($shortcode)
+        {
+            $shortcode = (string) $shortcode;
+            if (preg_match('/slider\s*=\s*["\']?(\d+)["\']?/i', $shortcode, $matches)) {
+                return $matches[1];
+            }
+
+            return '';
+        }
+
+        private function get_product_categories_for_admin()
+        {
+            if (!function_exists('get_terms')) {
+                return array();
+            }
+
+            $terms = get_terms(array(
+                'taxonomy' => 'product_cat',
+                'hide_empty' => false,
+            ));
+
+            if (is_wp_error($terms) || !is_array($terms)) {
+                return array();
+            }
+
+            $options = array();
+            foreach ($terms as $term) {
+                if (!isset($term->slug) || !isset($term->name) || !isset($term->term_id)) {
+                    continue;
+                }
+
+                $options[] = array(
+                    'slug' => (string) $term->slug,
+                    'label' => '#' . (string) $term->term_id . ' — ' . (string) $term->name . ' (' . (string) $term->slug . ')',
+                );
+            }
+
+            return $options;
+        }
+
+        private function get_smart_sliders_for_admin()
+        {
+            global $wpdb;
+
+            if (!isset($wpdb) || !isset($wpdb->prefix)) {
+                return array();
+            }
+
+            $table_name = $wpdb->prefix . 'nextend2_smartslider3_sliders';
+            $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name));
+            if ($table_exists !== $table_name) {
+                return array();
+            }
+
+            $results = $wpdb->get_results("SELECT id, title FROM {$table_name} ORDER BY title ASC");
+            if (!is_array($results)) {
+                return array();
+            }
+
+            $options = array();
+            foreach ($results as $slider) {
+                if (!isset($slider->id) || !isset($slider->title)) {
+                    continue;
+                }
+
+                $options[] = array(
+                    'id' => (string) $slider->id,
+                    'label' => '#' . (string) $slider->id . ' — ' . (string) $slider->title,
+                );
+            }
+
+            return $options;
         }
 
         public function render_default_shortcode_field()
