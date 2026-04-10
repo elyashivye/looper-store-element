@@ -130,11 +130,10 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
 
         public function render_section_description()
         {
-            echo '<p>' . esc_html__('Define which Smart Slider shortcode belongs to each product category.', 'looper-dynamic-slider') . '</p>';
-            echo '<p>' . esc_html__('You can use category slug (recommended), term ID, or exact category name.', 'looper-dynamic-slider') . '</p>';
-            echo '<p>' . esc_html__('Use the category and slider search fields below for faster selection.', 'looper-dynamic-slider') . '</p>';
-            echo '<p>' . esc_html__('Tip: You can also paste the category URL (with or without trailing slash); the plugin will extract the slug automatically.', 'looper-dynamic-slider') . '</p>';
-            echo '<p><code>[ldss_dynamic_slider]</code> ' . esc_html__('is the fixed shortcode to use inside Elementor.', 'looper-dynamic-slider') . '</p>';
+            echo '<p>' . esc_html__('הגדר איזה שורטקוד של Smart Slider שייך לכל קטגוריית מוצרים.', 'looper-dynamic-slider') . '</p>';
+            echo '<p>' . esc_html__('אפשר להזין slug / מזהה קטגוריה / שם קטגוריה / URL מלא של הקטגוריה.', 'looper-dynamic-slider') . '</p>';
+            echo '<p>' . esc_html__('בשדה הקטגוריה תראה גם את שם דף היעד שהמערכת מזהה עבורך.', 'looper-dynamic-slider') . '</p>';
+            echo '<p><code>[ldss_dynamic_slider]</code> ' . esc_html__('זה השורטקוד הקבוע לשימוש בתוך Elementor.', 'looper-dynamic-slider') . '</p>';
         }
 
         public function render_mappings_field()
@@ -150,52 +149,52 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                 );
             }
 
-            echo '<datalist id="ldss-category-suggestions">';
-            foreach ($product_categories as $category_option) {
-                echo '<option value="' . esc_attr($category_option['slug']) . '">' . esc_html($category_option['label']) . '</option>';
-            }
-            echo '</datalist>';
-
+            $this->render_admin_styles();
             echo '<div id="ldss-mapping-rows">';
 
             foreach ($mappings as $index => $mapping) {
                 $category = isset($mapping['category']) ? $mapping['category'] : '';
                 $shortcode = isset($mapping['shortcode']) ? $mapping['shortcode'] : '';
-                $this->render_mapping_row($index, $category, $shortcode, $smart_sliders);
+                $this->render_mapping_row($index, $category, $shortcode, $smart_sliders, $product_categories);
             }
 
             echo '</div>';
 
-            echo '<button type="button" class="button" id="ldss-add-row">' . esc_html__('Add Mapping', 'looper-dynamic-slider') . '</button>';
+            echo '<button type="button" class="button button-primary" id="ldss-add-row">' . esc_html__('הוספת מיפוי', 'looper-dynamic-slider') . '</button>';
 
-            $this->render_admin_script($smart_sliders);
+            $this->render_admin_script($smart_sliders, $product_categories);
         }
 
-        private function render_mapping_row($index, $category, $shortcode, $smart_sliders)
+        private function render_mapping_row($index, $category, $shortcode, $smart_sliders, $product_categories)
         {
             $slider_id_from_shortcode = $this->extract_slider_id_from_shortcode($shortcode);
+            $category_preview = $this->resolve_category_preview($category, $product_categories);
 
-            echo '<div class="ldss-row" style="display:flex;gap:10px;margin-bottom:10px;align-items:center;">';
+            echo '<div class="ldss-row">';
 
-            echo '<input type="text" class="ldss-category-input" list="ldss-category-suggestions" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][category]" value="' . esc_attr($category) . '" placeholder="Search category by name / slug / URL" style="min-width:260px;" />';
+            echo '<div class="ldss-category-picker">';
+            echo '<input type="text" class="ldss-category-input" autocomplete="off" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][category]" value="' . esc_attr($category) . '" placeholder="חיפוש קטגוריה לפי שם / slug / URL" />';
+            echo '<div class="ldss-category-dropdown" hidden></div>';
+            echo '<div class="ldss-category-preview">' . esc_html($category_preview) . '</div>';
+            echo '</div>';
 
             echo '<select class="ldss-slider-select" style="min-width:300px;">';
-            echo '<option value="">' . esc_html__('Select Smart Slider (or keep custom shortcode)', 'looper-dynamic-slider') . '</option>';
+            echo '<option value="">' . esc_html__('בחירת סליידר (או להזין שורטקוד ידנית)', 'looper-dynamic-slider') . '</option>';
             foreach ($smart_sliders as $slider_option) {
                 $selected = ((string) $slider_option['id'] === (string) $slider_id_from_shortcode) ? 'selected' : '';
                 echo '<option value="' . esc_attr($slider_option['id']) . '" ' . esc_attr($selected) . '>' . esc_html($slider_option['label']) . '</option>';
             }
             echo '</select>';
 
-            echo '<input type="text" class="ldss-shortcode-input" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][shortcode]" value="' . esc_attr($shortcode) . '" placeholder="[smartslider3 slider=&quot;2&quot;]" style="min-width:320px;" />';
+            echo '<input type="text" class="ldss-shortcode-input" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][shortcode]" value="' . esc_attr($shortcode) . '" placeholder="[smartslider3 slider=&quot;2&quot;]" />';
 
-            echo '<button type="button" class="button ldss-remove-row">' . esc_html__('Remove', 'looper-dynamic-slider') . '</button>';
+            echo '<button type="button" class="button ldss-remove-row">' . esc_html__('הסר', 'looper-dynamic-slider') . '</button>';
             echo '</div>';
         }
 
-        private function render_admin_script($smart_sliders)
+        private function render_admin_script($smart_sliders, $product_categories)
         {
-            $slider_options_html = '<option value="">' . esc_html__('Select Smart Slider (or keep custom shortcode)', 'looper-dynamic-slider') . '</option>';
+            $slider_options_html = '<option value="">' . esc_html__('בחירת סליידר (או להזין שורטקוד ידנית)', 'looper-dynamic-slider') . '</option>';
             foreach ($smart_sliders as $slider_option) {
                 $slider_options_html .= '<option value="' . esc_attr($slider_option['id']) . '">' . esc_html($slider_option['label']) . '</option>';
             }
@@ -205,10 +204,90 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                     const container = document.getElementById('ldss-mapping-rows');
                     const addBtn = document.getElementById('ldss-add-row');
                     const sliderOptionsHtml = <?php echo wp_json_encode($slider_options_html); ?>;
+                    const categories = <?php echo wp_json_encode($product_categories); ?>;
 
                     if (!container || !addBtn) {
                         return;
                     }
+
+                    const decodeMaybe = function (value) {
+                        try {
+                            return decodeURIComponent(value);
+                        } catch (err) {
+                            return value;
+                        }
+                    };
+
+                    const getCategoryMatch = function (rawValue) {
+                        const value = (rawValue || '').trim();
+                        if (!value) {
+                            return null;
+                        }
+
+                        const cleanValue = decodeMaybe(value).replace(/^\/+|\/+$/g, '');
+                        const parts = cleanValue.split('/');
+                        const lastPart = parts.length ? parts[parts.length - 1] : cleanValue;
+                        const normalized = lastPart.toLowerCase();
+
+                        return categories.find(function (item) {
+                            return (
+                                String(item.id) === value ||
+                                item.slug.toLowerCase() === normalized ||
+                                item.name.toLowerCase() === decodeMaybe(value).toLowerCase() ||
+                                item.slug.toLowerCase() === value.toLowerCase()
+                            );
+                        }) || null;
+                    };
+
+                    const updateCategoryPreview = function (row) {
+                        const input = row.querySelector('.ldss-category-input');
+                        const preview = row.querySelector('.ldss-category-preview');
+                        if (!input || !preview) {
+                            return;
+                        }
+
+                        const match = getCategoryMatch(input.value);
+                        if (!match) {
+                            preview.textContent = 'דף יעד: לא זוהתה קטגוריה (אפשר עדיין לשמור ידנית)';
+                            return;
+                        }
+
+                        preview.textContent = 'דף יעד: ' + match.name + ' (' + match.slug + ')';
+                    };
+
+                    const renderCategoryDropdown = function (row) {
+                        const input = row.querySelector('.ldss-category-input');
+                        const dropdown = row.querySelector('.ldss-category-dropdown');
+                        if (!input || !dropdown) {
+                            return;
+                        }
+
+                        const query = (input.value || '').trim().toLowerCase();
+                        const matches = categories.filter(function (item) {
+                            if (!query) {
+                                return true;
+                            }
+
+                            return (
+                                item.name.toLowerCase().includes(query) ||
+                                item.slug.toLowerCase().includes(query) ||
+                                String(item.id).includes(query)
+                            );
+                        }).slice(0, 8);
+
+                        if (!matches.length) {
+                            dropdown.hidden = true;
+                            dropdown.innerHTML = '';
+                            return;
+                        }
+
+                        dropdown.innerHTML = matches.map(function (item) {
+                            return '<button type="button" class="ldss-category-option" data-slug="' + item.slug + '">' +
+                                '<strong>' + item.name + '</strong> <span>(' + item.slug + ' · #' + item.id + ')</span>' +
+                            '</button>';
+                        }).join('');
+                        dropdown.hidden = false;
+                    };
 
                     const updateShortcodeFromSelect = function (row) {
                         const select = row.querySelector('.ldss-slider-select');
@@ -251,10 +330,14 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                         row.style.alignItems = 'center';
 
                         row.innerHTML =
-                            '<input type="text" class="ldss-category-input" list="ldss-category-suggestions" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][category]" placeholder="Search category by name / slug / URL" style="min-width:260px;" />' +
+                            '<div class="ldss-category-picker">' +
+                                '<input type="text" class="ldss-category-input" autocomplete="off" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][category]" placeholder="חיפוש קטגוריה לפי שם / slug / URL" />' +
+                                '<div class="ldss-category-dropdown" hidden></div>' +
+                                '<div class="ldss-category-preview">דף יעד: לא נבחר</div>' +
+                            '</div>' +
                             '<select class="ldss-slider-select" style="min-width:300px;">' + sliderOptionsHtml + '</select>' +
-                            '<input type="text" class="ldss-shortcode-input" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][shortcode]" placeholder="[smartslider3 slider=&quot;2&quot;]" style="min-width:320px;" />' +
-                            '<button type="button" class="button ldss-remove-row"><?php echo esc_js(__('Remove', 'looper-dynamic-slider')); ?></button>';
+                            '<input type="text" class="ldss-shortcode-input" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][shortcode]" placeholder="[smartslider3 slider=&quot;2&quot;]" />' +
+                            '<button type="button" class="button ldss-remove-row"><?php echo esc_js(__('הסר', 'looper-dynamic-slider')); ?></button>';
 
                         container.appendChild(row);
                     });
@@ -291,8 +374,132 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                             syncSelectFromShortcode(row);
                         }
                     });
+
+                    container.addEventListener('focusin', function (event) {
+                        if (!event.target.classList.contains('ldss-category-input')) {
+                            return;
+                        }
+
+                        const row = event.target.closest('.ldss-row');
+                        if (row) {
+                            renderCategoryDropdown(row);
+                            updateCategoryPreview(row);
+                        }
+                    });
+
+                    container.addEventListener('input', function (event) {
+                        if (!event.target.classList.contains('ldss-category-input')) {
+                            return;
+                        }
+
+                        const row = event.target.closest('.ldss-row');
+                        if (row) {
+                            renderCategoryDropdown(row);
+                            updateCategoryPreview(row);
+                        }
+                    });
+
+                    container.addEventListener('click', function (event) {
+                        const optionButton = event.target.closest('.ldss-category-option');
+                        if (!optionButton) {
+                            return;
+                        }
+
+                        const row = optionButton.closest('.ldss-row');
+                        const input = row ? row.querySelector('.ldss-category-input') : null;
+                        const dropdown = row ? row.querySelector('.ldss-category-dropdown') : null;
+                        if (!row || !input || !dropdown) {
+                            return;
+                        }
+
+                        input.value = optionButton.getAttribute('data-slug') || '';
+                        dropdown.hidden = true;
+                        dropdown.innerHTML = '';
+                        updateCategoryPreview(row);
+                    });
+
+                    document.addEventListener('click', function (event) {
+                        if (event.target.closest('.ldss-category-picker')) {
+                            return;
+                        }
+
+                        container.querySelectorAll('.ldss-category-dropdown').forEach(function (dropdown) {
+                            dropdown.hidden = true;
+                        });
+                    });
                 })();
             </script>
+            <?php
+        }
+
+        private function render_admin_styles()
+        {
+            ?>
+            <style>
+                #ldss-mapping-rows {
+                    margin: 12px 0;
+                }
+
+                .ldss-row {
+                    display: grid;
+                    grid-template-columns: 320px 320px 1fr auto;
+                    gap: 10px;
+                    margin-bottom: 12px;
+                    align-items: start;
+                }
+
+                .ldss-category-picker {
+                    position: relative;
+                }
+
+                .ldss-category-input,
+                .ldss-shortcode-input,
+                .ldss-slider-select {
+                    width: 100%;
+                    min-height: 40px;
+                    border-radius: 10px;
+                }
+
+                .ldss-category-dropdown {
+                    position: absolute;
+                    z-index: 99;
+                    left: 0;
+                    right: 0;
+                    top: calc(100% + 6px);
+                    border: 1px solid #ccd0d4;
+                    background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
+                    border-radius: 12px;
+                    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+                    max-height: 220px;
+                    overflow: auto;
+                    padding: 6px;
+                }
+
+                .ldss-category-option {
+                    width: 100%;
+                    text-align: right;
+                    border: 0;
+                    background: transparent;
+                    border-radius: 8px;
+                    padding: 8px 10px;
+                    cursor: pointer;
+                }
+
+                .ldss-category-option:hover {
+                    background: #eaf3ff;
+                }
+
+                .ldss-category-option span {
+                    color: #4f5d6b;
+                    font-size: 12px;
+                }
+
+                .ldss-category-preview {
+                    margin-top: 6px;
+                    color: #1d2327;
+                    font-size: 12px;
+                }
+            </style>
             <?php
         }
 
@@ -328,12 +535,37 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                 }
 
                 $options[] = array(
+                    'id' => (string) $term->term_id,
+                    'name' => (string) $term->name,
                     'slug' => (string) $term->slug,
                     'label' => '#' . (string) $term->term_id . ' — ' . (string) $term->name . ' (' . (string) $term->slug . ')',
                 );
             }
 
             return $options;
+        }
+
+        private function resolve_category_preview($value, $categories)
+        {
+            $value = trim((string) $value);
+            if ($value === '') {
+                return 'דף יעד: לא נבחר';
+            }
+
+            $expanded = $this->expand_category_candidates($value);
+            foreach ($categories as $category) {
+                $id = isset($category['id']) ? (string) $category['id'] : '';
+                $slug = isset($category['slug']) ? (string) $category['slug'] : '';
+                $name = isset($category['name']) ? (string) $category['name'] : '';
+
+                foreach ($expanded as $candidate) {
+                    if ($candidate === $id || $candidate === $slug || $candidate === $name) {
+                        return 'דף יעד: ' . $name . ' (' . $slug . ')';
+                    }
+                }
+            }
+
+            return 'דף יעד: לא זוהתה קטגוריה (אפשר עדיין לשמור ידנית)';
         }
 
         private function get_smart_sliders_for_admin()
