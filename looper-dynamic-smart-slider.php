@@ -171,13 +171,17 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
             $category_preview = $this->resolve_category_preview($category, $product_categories);
 
             echo '<div class="ldss-row">';
-
+            echo '<div class="ldss-field">';
+            echo '<label class="ldss-label">' . esc_html__('קטגוריית יעד', 'looper-dynamic-slider') . '</label>';
             echo '<div class="ldss-category-picker">';
             echo '<input type="text" class="ldss-category-input" autocomplete="off" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][category]" value="' . esc_attr($category) . '" placeholder="חיפוש קטגוריה לפי שם / slug / URL" />';
             echo '<div class="ldss-category-dropdown" hidden></div>';
             echo '<div class="ldss-category-preview">' . esc_html($category_preview) . '</div>';
             echo '</div>';
+            echo '</div>';
 
+            echo '<div class="ldss-field">';
+            echo '<label class="ldss-label">' . esc_html__('סליידר', 'looper-dynamic-slider') . '</label>';
             echo '<select class="ldss-slider-select" style="min-width:300px;">';
             echo '<option value="">' . esc_html__('בחירת סליידר (או להזין שורטקוד ידנית)', 'looper-dynamic-slider') . '</option>';
             foreach ($smart_sliders as $slider_option) {
@@ -185,8 +189,12 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                 echo '<option value="' . esc_attr($slider_option['id']) . '" ' . esc_attr($selected) . '>' . esc_html($slider_option['label']) . '</option>';
             }
             echo '</select>';
+            echo '</div>';
 
+            echo '<div class="ldss-field">';
+            echo '<label class="ldss-label">' . esc_html__('שורטקוד', 'looper-dynamic-slider') . '</label>';
             echo '<input type="text" class="ldss-shortcode-input" name="' . esc_attr(self::OPTION_KEY) . '[mappings][' . esc_attr($index) . '][shortcode]" value="' . esc_attr($shortcode) . '" placeholder="[smartslider3 slider=&quot;2&quot;]" />';
+            echo '</div>';
 
             echo '<button type="button" class="button ldss-remove-row">' . esc_html__('הסר', 'looper-dynamic-slider') . '</button>';
             echo '</div>';
@@ -330,13 +338,22 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                         row.style.alignItems = 'center';
 
                         row.innerHTML =
-                            '<div class="ldss-category-picker">' +
-                                '<input type="text" class="ldss-category-input" autocomplete="off" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][category]" placeholder="חיפוש קטגוריה לפי שם / slug / URL" />' +
-                                '<div class="ldss-category-dropdown" hidden></div>' +
-                                '<div class="ldss-category-preview">דף יעד: לא נבחר</div>' +
+                            '<div class="ldss-field">' +
+                                '<label class="ldss-label">קטגוריית יעד</label>' +
+                                '<div class="ldss-category-picker">' +
+                                    '<input type="text" class="ldss-category-input" autocomplete="off" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][category]" placeholder="חיפוש קטגוריה לפי שם / slug / URL" />' +
+                                    '<div class="ldss-category-dropdown" hidden></div>' +
+                                    '<div class="ldss-category-preview">דף יעד: לא נבחר</div>' +
+                                '</div>' +
                             '</div>' +
-                            '<select class="ldss-slider-select" style="min-width:300px;">' + sliderOptionsHtml + '</select>' +
-                            '<input type="text" class="ldss-shortcode-input" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][shortcode]" placeholder="[smartslider3 slider=&quot;2&quot;]" />' +
+                            '<div class="ldss-field">' +
+                                '<label class="ldss-label">סליידר</label>' +
+                                '<select class="ldss-slider-select" style="min-width:300px;">' + sliderOptionsHtml + '</select>' +
+                            '</div>' +
+                            '<div class="ldss-field">' +
+                                '<label class="ldss-label">שורטקוד</label>' +
+                                '<input type="text" class="ldss-shortcode-input" name="<?php echo esc_js(self::OPTION_KEY); ?>[mappings][' + idx + '][shortcode]" placeholder="[smartslider3 slider=&quot;2&quot;]" />' +
+                            '</div>' +
                             '<button type="button" class="button ldss-remove-row"><?php echo esc_js(__('הסר', 'looper-dynamic-slider')); ?></button>';
 
                         container.appendChild(row);
@@ -437,15 +454,32 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
             ?>
             <style>
                 #ldss-mapping-rows {
-                    margin: 12px 0;
+                    margin: 16px 0;
+                    display: grid;
+                    gap: 14px;
                 }
 
                 .ldss-row {
                     display: grid;
-                    grid-template-columns: 320px 320px 1fr auto;
-                    gap: 10px;
-                    margin-bottom: 12px;
-                    align-items: start;
+                    grid-template-columns: minmax(250px, 1fr) minmax(240px, 1fr) minmax(240px, 1fr) auto;
+                    gap: 12px;
+                    align-items: end;
+                    background: #fff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 14px;
+                    padding: 14px;
+                    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+                }
+
+                .ldss-field {
+                    display: grid;
+                    gap: 6px;
+                }
+
+                .ldss-label {
+                    color: #334155;
+                    font-weight: 600;
+                    font-size: 12px;
                 }
 
                 .ldss-category-picker {
@@ -458,6 +492,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                     width: 100%;
                     min-height: 40px;
                     border-radius: 10px;
+                    border-color: #cbd5e1;
                 }
 
                 .ldss-category-dropdown {
@@ -486,7 +521,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                 }
 
                 .ldss-category-option:hover {
-                    background: #eaf3ff;
+                    background: #e0efff;
                 }
 
                 .ldss-category-option span {
@@ -496,8 +531,27 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
 
                 .ldss-category-preview {
                     margin-top: 6px;
-                    color: #1d2327;
+                    color: #475569;
                     font-size: 12px;
+                }
+
+                .ldss-remove-row {
+                    min-height: 40px;
+                    border-radius: 10px;
+                }
+
+                .ldss-credit {
+                    margin-top: 18px;
+                    text-align: center;
+                    font-size: 11px;
+                    color: #64748b;
+                    opacity: 0.85;
+                }
+
+                .ldss-credit a {
+                    color: #475569;
+                    text-decoration: none;
+                    border-bottom: 1px dotted #94a3b8;
                 }
             </style>
             <?php
@@ -608,7 +662,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
             $default_shortcode = isset($value['default_shortcode']) ? $value['default_shortcode'] : '';
 
             echo '<input type="text" name="' . esc_attr(self::OPTION_KEY) . '[default_shortcode]" value="' . esc_attr($default_shortcode) . '" placeholder="[smartslider3 slider=&quot;1&quot;]" style="min-width:320px;" />';
-            echo '<p class="description">' . esc_html__('Displayed when no mapping is found for the current category.', 'looper-dynamic-slider') . '</p>';
+            echo '<p class="description">' . esc_html__('יוצג כאשר לא נמצא מיפוי תואם לקטגוריה הנוכחית.', 'looper-dynamic-slider') . '</p>';
         }
 
         public function render_admin_page()
@@ -619,6 +673,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
 
             echo '<div class="wrap">';
             echo '<h1>' . esc_html__('Dynamic Smart Slider for Product Categories', 'looper-dynamic-slider') . '</h1>';
+            echo '<p>' . esc_html__('ממשק מיפוי מהיר לבחירת קטגוריה וסליידר בכמה קליקים.', 'looper-dynamic-slider') . '</p>';
             echo '<form method="post" action="options.php">';
 
             settings_fields('ldss_settings_group');
@@ -626,6 +681,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
             submit_button();
 
             echo '</form>';
+            echo '<div class="ldss-credit">כל הזכויות שמורות ל- clicknow — שיווק שמבין עסקים · <a href="https://clicknow.space" target="_blank" rel="noopener noreferrer">clicknow.space</a></div>';
             echo '</div>';
         }
 
