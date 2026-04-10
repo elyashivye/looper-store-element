@@ -226,6 +226,15 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                         }
                     };
 
+                    const escapeHtml = function (value) {
+                        return String(value || '')
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#039;');
+                    };
+
                     const getCategoryMatch = function (rawValue) {
                         const value = (rawValue || '').trim();
                         if (!value) {
@@ -238,11 +247,14 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                         const normalized = lastPart.toLowerCase();
 
                         return categories.find(function (item) {
+                            const decodedSlug = decodeMaybe(item.slug).toLowerCase();
                             return (
                                 String(item.id) === value ||
                                 item.slug.toLowerCase() === normalized ||
+                                decodedSlug === normalized ||
                                 item.name.toLowerCase() === decodeMaybe(value).toLowerCase() ||
-                                item.slug.toLowerCase() === value.toLowerCase()
+                                item.slug.toLowerCase() === value.toLowerCase() ||
+                                decodedSlug === value.toLowerCase()
                             );
                         }) || null;
                     };
@@ -260,7 +272,10 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                             return;
                         }
 
-                        preview.textContent = 'דף יעד: ' + match.name + ' (' + match.slug + ')';
+                        const decodedSlug = decodeMaybe(match.slug);
+                        const fullUrl = match.url_decoded || match.url || '';
+                        preview.innerHTML = 'דף יעד: ' + escapeHtml(match.name) + ' (' + escapeHtml(decodedSlug) + ')' +
+                            (fullUrl ? ' <span class="ldss-link-chip" data-full-url="' + escapeHtml(fullUrl) + '">לינק מלא</span>' : '');
                     };
 
                     const renderCategoryDropdown = function (row) {
@@ -284,6 +299,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                         }).slice(0, 8);
 
                         if (!matches.length) {
+                            row.classList.remove('ldss-search-open');
                             dropdown.hidden = true;
                             dropdown.innerHTML = '';
                             return;
@@ -294,6 +310,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                                 '<strong>' + item.name + '</strong> <span>(' + item.slug + ' · #' + item.id + ')</span>' +
                             '</button>';
                         }).join('');
+                        row.classList.add('ldss-search-open');
                         dropdown.hidden = false;
                     };
 
@@ -432,6 +449,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                         input.value = optionButton.getAttribute('data-slug') || '';
                         dropdown.hidden = true;
                         dropdown.innerHTML = '';
+                        row.classList.remove('ldss-search-open');
                         updateCategoryPreview(row);
                     });
 
@@ -442,6 +460,9 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
 
                         container.querySelectorAll('.ldss-category-dropdown').forEach(function (dropdown) {
                             dropdown.hidden = true;
+                        });
+                        container.querySelectorAll('.ldss-row').forEach(function (row) {
+                            row.classList.remove('ldss-search-open');
                         });
                     });
                 })();
@@ -510,6 +531,12 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                     padding: 6px;
                 }
 
+                .ldss-row.ldss-search-open .ldss-category-dropdown {
+                    left: -18%;
+                    right: -18%;
+                    max-height: 320px;
+                }
+
                 .ldss-category-option {
                     width: 100%;
                     text-align: right;
@@ -533,6 +560,38 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                     margin-top: 6px;
                     color: #475569;
                     font-size: 12px;
+                }
+
+                .ldss-link-chip {
+                    display: inline-block;
+                    margin-right: 8px;
+                    padding: 2px 8px;
+                    border-radius: 999px;
+                    background: #e2ecff;
+                    color: #1e3a8a;
+                    font-size: 11px;
+                    cursor: help;
+                    position: relative;
+                }
+
+                .ldss-link-chip:hover::after {
+                    content: attr(data-full-url);
+                    position: absolute;
+                    right: 0;
+                    bottom: calc(100% + 8px);
+                    width: 360px;
+                    max-width: 70vw;
+                    white-space: normal;
+                    background: #0f172a;
+                    color: #fff;
+                    font-size: 11px;
+                    line-height: 1.4;
+                    padding: 8px 10px;
+                    border-radius: 8px;
+                    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.22);
+                    z-index: 100;
+                    direction: ltr;
+                    text-align: left;
                 }
 
                 .ldss-remove-row {
@@ -588,10 +647,15 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                     continue;
                 }
 
+                $term_link = get_term_link($term);
+                $term_link_value = !is_wp_error($term_link) ? (string) $term_link : '';
+
                 $options[] = array(
                     'id' => (string) $term->term_id,
                     'name' => (string) $term->name,
                     'slug' => (string) $term->slug,
+                    'url' => $term_link_value,
+                    'url_decoded' => rawurldecode($term_link_value),
                     'label' => '#' . (string) $term->term_id . ' — ' . (string) $term->name . ' (' . (string) $term->slug . ')',
                 );
             }
@@ -614,7 +678,7 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
 
                 foreach ($expanded as $candidate) {
                     if ($candidate === $id || $candidate === $slug || $candidate === $name) {
-                        return 'דף יעד: ' . $name . ' (' . $slug . ')';
+                        return 'דף יעד: ' . $name . ' (' . rawurldecode($slug) . ')';
                     }
                 }
             }
@@ -729,7 +793,12 @@ if (!class_exists('Looper_Dynamic_Smart_Slider')) {
                 $candidates = $this->expand_category_candidates($raw_candidate);
 
                 foreach ($candidates as $candidate) {
+                    $candidate_encoded = rawurlencode($candidate);
                     if ($candidate === $term_id || $candidate === $term_slug || $candidate === $term_name) {
+                        return $mapping['shortcode'];
+                    }
+
+                    if ($candidate_encoded === $term_slug) {
                         return $mapping['shortcode'];
                     }
 
